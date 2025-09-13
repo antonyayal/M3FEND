@@ -55,7 +55,11 @@ class Trainer():
         self.early_stop = early_stop
         self.epoches = epoches
         self.category_dict = category_dict
-        self.use_cuda = use_cuda
+
+        # CHANGED: Haz que use_cuda respete la disponibilidad real de CUDA para evitar el crash.
+        # Si el usuario pide CUDA pero no hay GPU, se cae a CPU sin reventar.
+        self.use_cuda = bool(use_cuda) and torch.cuda.is_available()  # CHANGED
+        self.device = torch.device("cuda") if self.use_cuda else torch.device("cpu")  # CHANGED
 
         self.emb_dim = emb_dim
         self.mlp_dims = mlp_dims
@@ -72,10 +76,12 @@ class Trainer():
     def train(self, logger = None):
         if(logger):
             logger.info('start training......')
+            # CHANGED: Mensaje claro del device final elegido.
+            logger.info(f'Using device: {self.device.type}')  # CHANGED
 
         self.model = BertFNModel(self.emb_dim, self.mlp_dims, self.dropout, self.dataset)
-        if self.use_cuda:
-            self.model = self.model.cuda()
+        # CHANGED: Evita .cuda() directo. Usa .to(device) para soportar CPU/GPU sin romper.
+        self.model = self.model.to(self.device)  # CHANGED
 
         loss_fn = torch.nn.BCELoss()
         optimizer = torch.optim.Adam(params=self.model.parameters(), lr=self.lr, weight_decay=self.weight_decay)
@@ -87,13 +93,15 @@ class Trainer():
             avg_loss = Averager()
 
             for step_n, batch in enumerate(train_data_iter):
-                batch_data = data2gpu(batch, self.use_cuda)
+                # CHANGED: data2gpu ya mueve tensores si self.use_cuda=True; en CPU no los mueve.
+                batch_data = data2gpu(batch, self.use_cuda)  # CHANGED (comentario)
+
                 label = batch_data['label']
 
-                optimizer.zero_grad()
+                # CHANGED: Había un doble optimizer.zero_grad(); deja solo uno.
+                optimizer.zero_grad()  # CHANGED
                 pred = self.model(**batch_data)
                 loss = loss_fn(pred, label.float())
-                optimizer.zero_grad()
                 loss.backward()
                 optimizer.step()
                 avg_loss.add(loss.item())
@@ -110,7 +118,10 @@ class Trainer():
                 break
             else:
                 continue
-        self.model.load_state_dict(torch.load(os.path.join(self.save_param_dir, 'parameter_bert.pkl')))
+
+        # CHANGED: Carga el checkpoint respetando el device para evitar error en CPU.
+        self.model.load_state_dict(torch.load(os.path.join(self.save_param_dir, 'parameter_bert.pkl'),
+                                              map_location=self.device))  # CHANGED
         results = self.test(self.test_loader)
         if(logger):
             logger.info("start testing......")
@@ -126,7 +137,8 @@ class Trainer():
         data_iter = tqdm.tqdm(dataloader)
         for step_n, batch in enumerate(data_iter):
             with torch.no_grad():
-                batch_data = data2gpu(batch, self.use_cuda)
+                # CHANGED: Igual que en train, deja que data2gpu maneje el traslado condicional.
+                batch_data = data2gpu(batch, self.use_cuda)  # CHANGED (comentario)
                 batch_label = batch_data['label']
                 batch_category = batch_data['category']
                 batch_pred = self.model(**batch_data)

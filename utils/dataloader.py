@@ -13,7 +13,9 @@ def _init_fn(worker_id):
     np.random.seed(2021)
 
 def read_pkl(path):
-    with open(path, "rb") as f:
+    var = path
+    print(var)
+    with open(path, "rb") as f: 
         t = pickle.load(f)
     return t
 

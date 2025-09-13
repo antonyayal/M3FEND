@@ -38,7 +38,8 @@ torch.backends.cudnn.benchmark = False
 torch.backends.cudnn.deterministic = True
 
 if args.dataset == 'en':
-    root_path = './data/en/'
+    #root_path = './data/en/'
+    root_path = '/home/antonio/Projects/M3FEND/M3FEND/data/en/'
     category_dict = {
         "gossipcop": 0,
         "politifact": 1,

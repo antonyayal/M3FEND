@@ -11,7 +11,7 @@ from sklearn.metrics import *
 from sklearn.cluster import KMeans
 from transformers import BertModel, RobertaModel
 
-from .layers import *
+from models.layers import *
 from utils.utils import data2gpu, Averager, metrics, Recorder
 
 
