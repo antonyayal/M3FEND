@@ -6,7 +6,7 @@ parser.add_argument('--epoch', type=int, default=50)
 parser.add_argument('--max_len', type=int, default=170)
 parser.add_argument('--num_workers', type=int, default=4)
 parser.add_argument('--early_stop', type=int, default=3)
-parser.add_argument('--dataset', default='ch')# en
+parser.add_argument('--dataset', default='en')# en
 parser.add_argument('--batchsize', type=int, default=64)
 parser.add_argument('--seed', type=int, default=2021)
 parser.add_argument('--gpu', default='0')
@@ -38,8 +38,7 @@ torch.backends.cudnn.benchmark = False
 torch.backends.cudnn.deterministic = True
 
 if args.dataset == 'en':
-    #root_path = './data/en/'
-    root_path = '/home/antonio/Projects/M3FEND/M3FEND/data/en/'
+    root_path = './data/en/'
     category_dict = {
         "gossipcop": 0,
         "politifact": 1,
@@ -79,7 +78,7 @@ print('lr: {}; model name: {}; batchsize: {}; epoch: {}; gpu: {}; domain_num: {}
 
 
 config = {
-        'use_cuda': True,
+        'use_cuda': args.gpu,
         'batchsize': args.batchsize,
         'max_len': args.max_len,
         'early_stop': args.early_stop,
@@ -87,7 +86,7 @@ config = {
         'root_path': root_path,
         'weight_decay': 5e-5,
         'category_dict': category_dict,
-        'dataset': args.dataset,
+        'dataset': args.dataset.strip().lower(), # <-- añadir dataset stripped and lowercased
         'model':
             {
             'mlp': {'dims': [384], 'dropout': 0.2}

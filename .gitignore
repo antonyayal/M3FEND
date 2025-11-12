@@ -1,2 +1,7 @@
-data/
+data/ch/*.pkl
+data/en/*.pkl
+param_model/
+logs/
+venv/
+*.pkl
 __pycache__/

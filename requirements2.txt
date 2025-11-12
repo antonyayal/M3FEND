@@ -1,0 +1,18 @@
+# --- Core ---
+torch==2.8.0
+numpy==2.3.2
+pandas==2.3.2
+tqdm==4.67.1
+scikit-learn==1.7.1
+scipy==1.16.1
+
+# --- Transformers / Hugging Face ---
+transformers==4.55.4
+tokenizers==0.21.4
+safetensors==0.6.2
+huggingface-hub==0.34.4
+requests==2.32.5
+PyYAML==6.0.2
+packaging==25.0
+regex==2025.7.34
+
