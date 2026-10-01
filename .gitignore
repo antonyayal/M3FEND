@@ -5,3 +5,8 @@ logs/
 venv/
 *.pkl
 __pycache__/
+
+# Local environment and Spanish corpus data (not versioned)
+.venv/
+data/sp/lexicons/
+data/sp/*.xlsx
