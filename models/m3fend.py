@@ -1,4 +1,5 @@
 import os
+import gc
 import torch
 from torch.autograd import Variable
 import tqdm
@@ -8,12 +9,16 @@ from .layers import *
 from sklearn.metrics import *
 from transformers import BertModel
 from transformers import RobertaModel
+from transformers import AutoModel
 from utils.utils import data2gpu, Averager, metrics, Recorder
 import logging
 import math
 from sklearn.cluster import KMeans
 import numpy as np
 from torch.nn.parameter import Parameter
+
+# (dim de content_emotion, dim de style_feature) por dataset
+FEATURE_DIMS = {'ch': (47, 48), 'en': (38, 32), 'sp': (36, 32)}
 
 def cal_length(x):
     return torch.sqrt(torch.sum(torch.pow(x, 2), dim = 1))
@@ -93,8 +98,11 @@ class M3FENDModel(torch.nn.Module):
             self.bert = BertModel.from_pretrained('hfl/chinese-bert-wwm-ext').requires_grad_(False)
         elif self.dataset == 'en':
             self.bert = RobertaModel.from_pretrained('roberta-base').requires_grad_(False)
+        elif self.dataset == 'sp':
+            self.bert = AutoModel.from_pretrained('FacebookAI/xlm-roberta-large-finetuned-conll02-spanish').requires_grad_(False)
         else:
-            raise ValueError(f"Dataset desconocido: '{self.dataset}'. Usa 'en' o 'ch'.") # Validación de dataset
+            raise ValueError(f"Dataset desconocido: '{self.dataset}'. Usa 'en', 'ch' o 'sp'.") # Validación de dataset
+        emotion_dim, style_dim = FEATURE_DIMS[self.dataset]
 
         feature_kernel = {1: 64, 2: 64, 3: 64, 5: 64, 10: 64}
 
@@ -105,18 +113,12 @@ class M3FENDModel(torch.nn.Module):
 
         emotion_expert = []
         for i in range(self.emotion_num_expert):
-            if self.dataset == 'ch':
-                emotion_expert.append(MLP(47 * 5, [256, 320,], dropout, output_layer=False))
-            elif self.dataset == 'en':
-                emotion_expert.append(MLP(38 * 5, [256, 320,], dropout, output_layer=False))
+            emotion_expert.append(MLP(emotion_dim * 5, [256, 320,], dropout, output_layer=False))
         self.emotion_expert = nn.ModuleList(emotion_expert)
 
         style_expert = []
         for i in range(self.style_num_expert):
-            if self.dataset == 'ch':
-                style_expert.append(MLP(48, [256, 320,], dropout, output_layer=False))
-            elif self.dataset == 'en':
-                style_expert.append(MLP(32, [256, 320,], dropout, output_layer=False))
+            style_expert.append(MLP(style_dim, [256, 320,], dropout, output_layer=False))
         self.style_expert = nn.ModuleList(style_expert)
 
 
@@ -139,10 +141,8 @@ class M3FENDModel(torch.nn.Module):
         stdv = 1. / math.sqrt(self.weight.size(1))
         self.weight.data.uniform_(-stdv, stdv)
 
-        if dataset == 'ch':
-            self.domain_memory = MemoryNetwork(input_dim = self.emb_dim + 47 * 5 + 48, emb_dim = self.emb_dim + 47 * 5 + 48, domain_num = self.domain_num, memory_num = self.memory_num)
-        elif dataset == 'en':
-            self.domain_memory = MemoryNetwork(input_dim = self.emb_dim + 38 * 5 + 32, emb_dim = self.emb_dim + 38 * 5 + 32, domain_num = self.domain_num, memory_num = self.memory_num)
+        memory_dim = self.emb_dim + emotion_dim * 5 + style_dim
+        self.domain_memory = MemoryNetwork(input_dim = memory_dim, emb_dim = memory_dim, domain_num = self.domain_num, memory_num = self.memory_num)
 
         self.domain_embedder = nn.Embedding(num_embeddings = self.domain_num, embedding_dim = emb_dim)
         self.all_feature = {}
@@ -361,7 +361,17 @@ class Trainer():
             logger.info("start testing......")
             logger.info("test score: {}\n\n".format(results))
         print(results)
+        self.release_memory()
         return results, os.path.join(self.save_param_dir, 'parameter_m3fend.pkl')
+
+    def release_memory(self):
+        # grid_search llama train() varias veces en el mismo proceso: sin esto el
+        # modelo anterior sigue en la GPU mientras se crea el nuevo (CUDA OOM)
+        self.model = None
+        self.best_mem = None
+        gc.collect()
+        if torch.cuda.is_available():
+            torch.cuda.empty_cache()
 
     def test(self, dataloader):
         pred = []

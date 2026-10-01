@@ -6,7 +6,8 @@ parser.add_argument('--epoch', type=int, default=50)
 parser.add_argument('--max_len', type=int, default=170)
 parser.add_argument('--num_workers', type=int, default=4)
 parser.add_argument('--early_stop', type=int, default=3)
-parser.add_argument('--dataset', default='en')# en
+parser.add_argument('--dataset', default='en')# en ch sp
+parser.add_argument('--sp_variant', default='full')# sp: full (emocion/estilo reales) | zeros (ablacion)
 parser.add_argument('--batchsize', type=int, default=64)
 parser.add_argument('--seed', type=int, default=2021)
 parser.add_argument('--gpu', default='0')
@@ -73,6 +74,23 @@ elif args.dataset == 'ch':
             "医药健康": 1,  #1000
             "文体娱乐": 2,  #1440
         }
+
+elif args.dataset == 'sp':
+    root_path = './data/sp/' if args.sp_variant == 'full' else './data/sp_zeros/'
+    args.emb_dim = 1024  # xlm-roberta-large (mismo encoder que FakeNewsStyle)
+    category_dict = {
+        "Politics": 0,
+        "Society": 1,
+        "Covid-19": 2,
+        "Entertainment": 3,
+        "Sport": 4,
+        "Science": 5,
+        "Health": 6,
+        "Security": 7,
+        "Economy": 8,
+        "Other": 9,  # Environment + International + Education
+    }
+    args.domain_num = len(category_dict)
 
 print('lr: {}; model name: {}; batchsize: {}; epoch: {}; gpu: {}; domain_num: {}'.format(args.lr, args.model_name, args.batchsize, args.epoch, args.gpu, args.domain_num))
 

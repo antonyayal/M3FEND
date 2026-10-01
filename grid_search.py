@@ -171,5 +171,6 @@ class Run():
             logger.info("best param " + p + ": " + str(best_v))
             logger.info("best metric:" + str(best_metric))
             logger.info('--------------------------------------\n')
+        os.makedirs(os.path.dirname(json_path), exist_ok=True)
         with open(json_path, 'w') as file:
             json.dump(json_result, file, indent=4, ensure_ascii=False)

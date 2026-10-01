@@ -7,6 +7,7 @@ import pickle
 import re
 from transformers import BertTokenizer
 from transformers import RobertaTokenizer
+from transformers import AutoTokenizer
 from torch.utils.data import TensorDataset, DataLoader
 
 def _init_fn(worker_id):
@@ -28,6 +29,8 @@ def word2input(texts, max_len, dataset):
         tokenizer = BertTokenizer.from_pretrained('hfl/chinese-bert-wwm-ext')
     elif dataset == 'en':
         tokenizer = RobertaTokenizer.from_pretrained('roberta-base')
+    elif dataset == 'sp':
+        tokenizer = AutoTokenizer.from_pretrained('FacebookAI/xlm-roberta-large-finetuned-conll02-spanish')
     token_ids = []
     for i, text in enumerate(texts):
         token_ids.append(
